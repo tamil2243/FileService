@@ -1,49 +1,95 @@
-package org.fileservice.dao;
+package org.fileservice.repository;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.dto.DBFIleDownloadResponseDTO;
 import org.fileservice.model.FileMeta;
 
 
 
-public class FileDAO {
+public class FileRepository {
 
 
 
-    public void uploadFile(String originalName, String contentType, FileInputStream fis, File file, int userId) throws Exception{
+    public void uploadFile(String fileName, String contentType, FileInputStream fis, File file, int userId)throws Exception{
+        Connection con = null;
+        PreparedStatement uploadStmt = null;
+        PreparedStatement permissionStmt=null;
+        try {
 
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                "INSERT INTO files (file_name, file_type, file_data,uploader_id) VALUES (?, ?, ?,?)")) {
-
-            ps.setString(1, originalName);
-            ps.setString(2, contentType);
-            ps.setBinaryStream(3, fis, (int) file.length()); 
-            ps.setInt(4, userId);
-            // ps.setBytes(3, fileData);
-
-            ps.executeUpdate();
-            System.out.println("File saved into DB successfully!");
-            int file_id=getFileId(originalName, userId);
-            System.out.println("file id retrived"+file_id);
-            setPermission(userId, file_id, true, true);
-            System.out.println("file permission are setted");
             
+            con=DBConnection.getConnection();
+            con.setAutoCommit(false);
+            uploadStmt=con.prepareStatement(
+                "INSERT INTO files (file_name, file_type, file_data,uploader_id) VALUES (?, ?, ?,?)",Statement.RETURN_GENERATED_KEYS);
+            
+            uploadStmt.setString(1, fileName);
+            uploadStmt.setString(2, contentType);
+            uploadStmt.setBinaryStream(3, fis, (int) file.length()); 
+            uploadStmt.setInt(4, userId);
+
+            int affectedRowsForFileUpload= uploadStmt.executeUpdate();
+            System.out.println("File uploaded successfully");
+           
+            int file_id = 0;
+            try (ResultSet generatedKeys = uploadStmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    file_id = generatedKeys.getInt(1);
+                } else {
+                    throw new UpdateFailedException("Failed to obtain file_id after insert.");
+                }
+            }
+
+            permissionStmt = con.prepareStatement("insert into file_permissions(user_id,file_id,can_download,can_delete) values(?,?,?,?)");
+            permissionStmt.setInt(1, userId);
+            permissionStmt.setInt(2, file_id);
+            permissionStmt.setBoolean(3, true);
+            permissionStmt.setBoolean(4, true);
+            int affectedRowsForPermission=permissionStmt.executeUpdate();
+
+            if(affectedRowsForFileUpload==0 || affectedRowsForPermission==0){
+                throw new UpdateFailedException("File can't  upload");
+            }
+
+            con.commit();
+            System.out.println("Transaction successful!");
         }
-        catch(Exception e){
-            e.printStackTrace();
-            throw e;
+        catch(UpdateFailedException e){
+            if (con != null) {
+               
+                con.rollback();
+                System.out.println("Transaction rolled back due to error: " + e.getMessage());
+            }
+            throw e; 
+        }
+        catch (Exception e) {
+            if (con != null) {
+               
+                con.rollback();
+                System.out.println("Transaction rolled back due to error: " + "Something went wrong during file upload");
+                e.printStackTrace();
+            }
+            throw e;  
+        } finally {
+           
+            if (uploadStmt != null) uploadStmt.close();
+            if (permissionStmt != null) permissionStmt.close();
+            if (con != null) {
+                con.setAutoCommit(true); 
+                con.close();
+            }
         }
     }
-    public Optional<DBFIleDownloadResponseDTO> fileDownload(int fileId) throws Exception{
+    public Optional<DBFIleDownloadResponseDTO> getFileForDownload(int fileId){
         DBFIleDownloadResponseDTO response=null;
 
         try (Connection con = DBConnection.getConnection();
@@ -65,7 +111,7 @@ public class FileDAO {
             return Optional.ofNullable(response);
         } catch (Exception e) {
             e.printStackTrace();
-            throw e;
+            return Optional.ofNullable(response);
         } 
 
 
@@ -89,13 +135,13 @@ public class FileDAO {
 
             
         } catch(Exception e){
-            
+            e.printStackTrace();
         }
         return 0;
         
     }
 
-    public void setPermission(int userId,int fileId,boolean download, boolean delete) throws Exception{
+    public int addPermission(int userId,int fileId,boolean download, boolean delete){
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
@@ -106,15 +152,16 @@ public class FileDAO {
                     ps.setBoolean(3, download);
                     ps.setBoolean(4, delete);
 
-                    ps.executeUpdate();
+                    return ps.executeUpdate();
             
         } catch (Exception e) {
-            throw e;
+            e.printStackTrace();
+            return 0;
         }
 
 
     }
-    public void modifyPermission(int userId,int fileId,boolean download, boolean delete) throws Exception{
+    public int updatePermission(int userId,int fileId,boolean download, boolean delete){
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
@@ -125,15 +172,16 @@ public class FileDAO {
                     ps.setInt(3, userId);
                     ps.setInt(4, fileId);
                     
-                    ps.executeUpdate();
+                    return ps.executeUpdate();
             
         } catch (Exception e) {
-            throw e;
+            e.printStackTrace();
+            return 0;
         }
 
 
     }
-    public boolean alredyUserPresent(int userId,int file_id){
+    public boolean isUserPermissionExists(int userId,int file_id){
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
                 "select * from file_permissions where file_id=? and user_id=?")){
@@ -148,6 +196,7 @@ public class FileDAO {
                     return false;
             
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
     }
@@ -169,10 +218,12 @@ public class FileDAO {
                     return false;
             
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
     }
     public boolean hasDeletePermission(int userId, int file_id){
+        System.out.println("delete permision checker method");
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
@@ -184,17 +235,19 @@ public class FileDAO {
 
                     ResultSet rs=ps.executeQuery();
                     if(rs.next()){
-
+                        System.out.println("permission fetched");
                         return rs.getBoolean("can_delete");
                     }
+                
                     return false;
             
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
     }
 
-    public List<FileMeta> getFileDetails(){
+    public List<FileMeta> listAllFiles(){
         List<FileMeta> list=new ArrayList<>();
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
@@ -213,7 +266,42 @@ public class FileDAO {
                     return list;
             
         } catch (Exception e) {
+            e.printStackTrace();
             return list;
+        }
+    }
+    public int deleteFile(int fileId){
+       
+       
+
+       
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(
+                "delete from files where id=?")) {
+                    ps.setInt(1, fileId);
+                    return ps.executeUpdate();
+                    
+                    
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+            
+        }
+        
+
+    }
+    public int deletePermission(int fileId){
+         try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(
+                "delete from file_permissions  where file_id=?")) {
+                    ps.setInt(1, fileId);
+                    return ps.executeUpdate();
+
+                   
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+            
         }
     }
     

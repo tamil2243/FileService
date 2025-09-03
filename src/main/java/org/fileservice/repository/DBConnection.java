@@ -1,4 +1,4 @@
-package org.fileservice.dao;
+package org.fileservice.repository;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

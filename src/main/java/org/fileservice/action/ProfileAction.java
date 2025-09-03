@@ -1,12 +1,13 @@
 package org.fileservice.action;
 
-import java.util.Optional;
-
 import org.apache.struts2.ServletActionContext;
-import org.fileservice.dao.ProfileDAO;
+import org.fileservice.Exception.UnAuthorizedUserException;
+import org.fileservice.Exception.UpdateFailedException;
+import org.fileservice.Exception.UserNotFountException;
 import org.fileservice.dto.ProfileResponseDTO;
 import org.fileservice.dto.UserDTO;
 import org.fileservice.model.User;
+import org.fileservice.service.ProfileService;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -16,8 +17,8 @@ public class ProfileAction {
     private int id;
 	private String email;
 	private String name;
-    private long number;
-    private ProfileDAO profileDAO=new ProfileDAO();
+    private String number;
+    private ProfileService profileService;
     private ProfileResponseDTO response;
 	public String executeGetPut(){
 		HttpServletRequest request = ServletActionContext.getRequest();
@@ -37,93 +38,50 @@ public class ProfileAction {
 
 
 	}
-	public String executeGetPost(){
-
-		HttpServletRequest request = ServletActionContext.getRequest();
-		String method = request.getMethod();
-        System.out.println("Request method: " + method);
-		System.out.println("idVal :"+id);
-		
-		switch (method) {
-			case "GET":
-				return doGetAll();
-			case "POST":
-				return doPost();
-			default:{
-				return "success";    
-			}
-		}
-
-		
-
-
-	}
+	
 	
 
-	public  String doGetAll(){
-		
-		System.out.println("entered in getAll");
-		
 	
-
-		return "success";
-	}
 	private String doGet(){
 		System.out.println("Entered in get");
-		HttpServletRequest request = ServletActionContext.getRequest();
-		String url = request.getRequestURL().toString();
-		id=Integer.parseInt(url.substring(url.lastIndexOf("/") + 1));
-		System.out.println("id :"+ id);
-		Optional<User> optional=profileDAO.findUserById(id);
-
-        if(optional.isEmpty()){
-            response=new ProfileResponseDTO();
-            response.setStatus(false);
-            response.setMessage("user not exist");
+		
+        try {
+            User user=profileService.getDetails();
+            response=new ProfileResponseDTO(true,"User exist details feched");
+            response.setUser(new UserDTO(user));
+            return "success";
+        } 
+        catch(UnAuthorizedUserException | UserNotFountException e){
+            response=new ProfileResponseDTO(false,e.getMessage());
             return "error";
         }
-        response=new ProfileResponseDTO();
-        response.setStatus(true);
-        response.setMessage("user exist");
-        response.setUser(new UserDTO(optional.get()));
-		return "success";
+        catch (Exception e) {
+            response=new ProfileResponseDTO(false,"Something went wrong during getDetails");
+            return "error";
+        }
+        
 		
 	}
-	private String doPost(){
-		System.out.println("entered in post");
-		
-		return "success";
-		
-	}
+	
 	public String doPut(){
 		System.out.println("entered in put");
-		if(name!=null){	
+        System.out.println("name :"+name);
+        System.out.println("number :"+number);
+        System.out.println("email :"+email);
 
-			try {
-                profileDAO.changeUserName(id, name);
-                response=new ProfileResponseDTO(true,"successfully updated");
-                return "success";
-            } catch (Exception e) {
-                response=new ProfileResponseDTO(false,e.getMessage());
-                return "error";
-            }
-		}
-		if(number!=0){
-
-			try {
-                profileDAO.changeUserNumber(id, number);
-                response=new ProfileResponseDTO(true,"successfully updated");
-                return "success";
-                
-            } catch (Exception e) {
-                response=new ProfileResponseDTO(false,e.getMessage());
-                return "error";
-            }
-		}
-
-
-        response=new ProfileResponseDTO(false,"can't update using empty value");
-        return "error";
+        try {
+            profileService.updateDetails(number, name);
+            response=new ProfileResponseDTO(true,"successfully updated");
+            return "success";
+        }catch(UnAuthorizedUserException | UpdateFailedException | NullPointerException e){
+            response=new ProfileResponseDTO(false,e.getMessage());
+            return "error";
+        } 
+        catch (Exception e) {
+            response=new ProfileResponseDTO(false,"Something went wrong during updation");
+            return "error";
+        }
+		
 		
 
 		
@@ -142,7 +100,7 @@ public class ProfileAction {
     public void setEmail(String email){
         this.email=email;
     }
-    public void setNumber(long number){
+    public void setNumber(String number){
         this.number=number;
     }
     
@@ -150,7 +108,7 @@ public class ProfileAction {
     public int getId(){
         return this.id;
     }
-    public long getNumber(){
+    public String getNumber(){
         return this.number;
     }
     public String getName(){
@@ -162,6 +120,12 @@ public class ProfileAction {
     
     public ProfileResponseDTO getResponse(){
         return this.response;
+    }
+
+
+
+    public void setProfileService(ProfileService profileService){
+        this.profileService=profileService;
     }
     
 }

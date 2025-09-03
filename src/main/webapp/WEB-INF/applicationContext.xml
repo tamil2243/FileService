@@ -1,0 +1,43 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+
+
+
+
+    <bean id="fileRepository" class="org.fileservice.repository.FileRepository"/>
+    <bean id="profileRepository" class="org.fileservice.repository.ProfileRepository"/>
+    <bean id="cookieService" class="org.fileservice.service.CookieService"/>
+
+    
+
+    <bean id="changePasswordService" class="org.fileservice.service.ChangePasswordService">
+        <property name="profileRepository" ref="profileRepository"/>
+        <property name="cookieService" ref="cookieService"/>
+        
+    </bean>
+    <bean id="profileService" class="org.fileservice.service.ProfileService">
+        <property name="profileRepository" ref="profileRepository"/>
+        <property name="cookieService" ref="cookieService"/>
+        
+    </bean>
+    <bean id="fileService" class="org.fileservice.service.FileService">
+        <property name="profileRepository" ref="profileRepository"/>
+        <property name="fileRepository" ref="fileRepository"/>
+        <property name="cookieService" ref="cookieService"/>
+    </bean>
+    <bean id="signinService" class="org.fileservice.service.SigninService">
+        <property name="profileRepository" ref="profileRepository"/>
+       
+    </bean>
+    <bean id="signUpService" class="org.fileservice.service.SignUpService">
+        <property name="profileRepository" ref="profileRepository"/>
+       
+    </bean>
+
+  
+
+</beans>

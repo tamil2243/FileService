@@ -1,26 +1,24 @@
 package org.fileservice.action;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 import org.apache.struts2.ActionSupport;
-import org.apache.struts2.ServletActionContext;
 import org.apache.struts2.action.UploadedFilesAware;
 import org.apache.struts2.dispatcher.multipart.UploadedFile;
-import org.fileservice.dao.FileDAO;
+import org.fileservice.Exception.UnAuthorizedUserException;
+import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.dto.FileUploadResponseDTO;
+import org.fileservice.service.FileService;
 
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 
 public class FileUploadAction extends ActionSupport implements UploadedFilesAware{
     private UploadedFile uploadedFile;
-    int userId;   
     private String fileName;
     private String contentType;
     private String originalName;
-    private final FileDAO fileDAO=new FileDAO();
+    private FileService fileService;
     private FileUploadResponseDTO response;
 
     @Override
@@ -37,6 +35,7 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
     public String execute() throws Exception {
         if (uploadedFile == null) {
             System.out.println("No file uploaded!");
+            response=new FileUploadResponseDTO(false,"File Not Found");
             return "error";
         }
 
@@ -46,34 +45,19 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
         System.out.println("Content Type: " + contentType);
         System.out.println("Size: " + uploadedFile.length());
 
-        // getting userId from cookie
-
-        HttpServletRequest request = ServletActionContext.getRequest();
-        Cookie[] cookies = request.getCookies();
-
-		if(cookies!=null) {
-				for(Cookie c : cookies) {
-					if("userId".equals(c.getName())) {
-							System.out.println("Found userId: " + c.getValue());
-							userId= Integer.parseInt(c.getValue());
-					}
-				}
-		}
-        if(userId==0){
-            response=new FileUploadResponseDTO(false,"please signin");
-            return "error";
-        }
-        File file = (File) uploadedFile.getContent();
-        FileInputStream fis = new FileInputStream(file);
-        // byte[] fileData = Files.readAllBytes(file.toPath());
-
-        // --- Store into DB (BLOB) ---
+       
        try {
-           fileDAO.uploadFile(originalName, contentType, fis, file,userId);
-           response=new FileUploadResponseDTO(true,"file successfully uploaded");
-           return "success";
-       } catch (Exception e) {
+            File file = (File) uploadedFile.getContent();
+            fileService.uploadFile(file, originalName, contentType);
+            response=new FileUploadResponseDTO(true,"file successfully uploaded");
+            return "success";
+       } 
+       catch (UnAuthorizedUserException | UpdateFailedException | FileNotFoundException e) {
             response=new FileUploadResponseDTO(false,e.getMessage());
+            return "error";
+       }
+       catch (Exception e) {
+            response=new FileUploadResponseDTO(false,"Something went wrong");
             return "error";
        }
 
@@ -88,7 +72,11 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
     public String getFileName() { return fileName; }
 
 
-    public void setUserId(int userId){
-        this.userId=userId;
+    public FileUploadResponseDTO getResponse(){
+
+        return this.response;
+    }
+    public void setFileService(FileService fileService){
+        this.fileService=fileService;
     }
 }

@@ -3,50 +3,38 @@ package org.fileservice.action;
 import java.util.List;
 
 import org.apache.struts2.ActionSupport;
-import org.apache.struts2.ServletActionContext;
-import org.fileservice.dao.FileDAO;
+import org.fileservice.Exception.UnAuthorizedUserException;
 import org.fileservice.dto.FileViewResponseDTO;
 import org.fileservice.model.FileMeta;
+import org.fileservice.service.FileService;
 
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
+
 
 public class FileViewAction extends ActionSupport{
 
 
-    private int userId;
     private FileViewResponseDTO response;
-    private FileDAO fileDAO=new FileDAO();
+    private FileService fileService;
 
 
 
     @Override
     public String execute(){
         System.out.println("Entered in FileViewAction");
-        HttpServletRequest request = ServletActionContext.getRequest();
-        Cookie[] cookies = request.getCookies();
-
-		if(cookies!=null) {
-				for(Cookie c : cookies) {
-					if("userId".equals(c.getName())) {
-							System.out.println("Found userId: " + c.getValue());
-							userId= Integer.parseInt(c.getValue());
-					}
-				}
-		}
-        if(userId==0){
-            response=new FileViewResponseDTO(false,"please signin");
-            return "error";
-        }
+        
 
         try {
-            List<FileMeta> listOfFiles=fileDAO.getFileDetails();
+            List<FileMeta> listOfFiles=fileService.getAllFiles();
             response=new FileViewResponseDTO(true,"successfully file details fetched");
             response.setListOfFiles(listOfFiles);
             return "success";
 
-        } catch (Exception e) {
+        } 
+        catch (UnAuthorizedUserException e) {
             response=new FileViewResponseDTO(false,e.getMessage());
+            return "error";
+        }catch (Exception e) {
+            response=new FileViewResponseDTO(false,"SomeThing went wrong");
             return "error";
         }
 
@@ -56,6 +44,9 @@ public class FileViewAction extends ActionSupport{
 
     public FileViewResponseDTO getResponse(){
         return this.response;
+    }
+    public void setFileService(FileService fileService){
+        this.fileService=fileService;
     }
     
 }

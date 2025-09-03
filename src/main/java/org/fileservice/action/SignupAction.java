@@ -2,8 +2,11 @@ package org.fileservice.action;
 
 import org.apache.struts2.ActionSupport;
 import org.apache.struts2.interceptor.parameter.StrutsParameter;
-import org.fileservice.dao.SignupDAO;
+import org.fileservice.Exception.EmailAlredyExistsException;
+import org.fileservice.Exception.MobileNumberAlredyExistsException;
 import org.fileservice.dto.SignupResponseDTO;
+import org.fileservice.service.SignUpService;
+
 
 public class SignupAction extends ActionSupport{
 
@@ -11,10 +14,10 @@ public class SignupAction extends ActionSupport{
 
     private String name;
     private String email;
-    private long  number;
+    private String  number;
     private String password;
     private SignupResponseDTO response;
-    private SignupDAO signupDAO;
+    private SignUpService signUpService;
 
     @Override
     public String execute(){
@@ -24,13 +27,17 @@ public class SignupAction extends ActionSupport{
         System.out.println("number "+number);
         System.out.println("password "+password);
         try {
+
+            signUpService.registerUser(name, number, email, password);
+            response=new SignupResponseDTO(true,"successfully registered");
             
-            signupDAO=new SignupDAO();
-            signupDAO.registerUser(name, email, password, number);
-            response=new SignupResponseDTO(true,"Successfully registered");
             return "success";
-        } catch (Exception e) {
+        } catch(MobileNumberAlredyExistsException | EmailAlredyExistsException  | NullPointerException e){
             response=new SignupResponseDTO(false,e.getMessage());
+            return "error";
+        }
+        catch (Exception e) {
+            response=new SignupResponseDTO(false,"somthing went wrong");
            
             return "error";
         }
@@ -49,13 +56,17 @@ public class SignupAction extends ActionSupport{
         this.email=email;
     }
     @StrutsParameter
-    public void setNumber(long number){
+    public void setNumber(String number){
         this.number=number;
     }
     @StrutsParameter
     public void setPassword(String password){
 
         this.password=password;
+    }
+
+    public void setSignUpService(SignUpService signUpService){
+        this.signUpService=signUpService;
     }
 
 

@@ -24,7 +24,7 @@ public class RequestLoggingFilter implements Filter{
         System.out.println("Incoming Request URL: " + httpRequest.getRequestURL() + " | Method: " + httpRequest.getMethod());
 
         chain.doFilter(request, response);
-	long endTime = System.currentTimeMillis();
+	    long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
         System.out.println("Completed Request URL: " + httpRequest.getRequestURL() + " | Time Taken: " + duration + " ms");
     }

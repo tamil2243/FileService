@@ -7,7 +7,7 @@ public class User{
     private int id;
     private String name;
     private String email;
-    private long  number;
+    private String  number;
     private String password;
 
   
@@ -25,7 +25,7 @@ public class User{
     public void setEmail(String email){
         this.email=email;
     }
-    public void setNumber(long number){
+    public void setNumber(String number){
         this.number=number;
     }
     public void setPassword(String password){
@@ -36,7 +36,7 @@ public class User{
     public int getId(){
         return this.id;
     }
-    public long getNumber(){
+    public String getNumber(){
         return this.number;
     }
     public String getName(){

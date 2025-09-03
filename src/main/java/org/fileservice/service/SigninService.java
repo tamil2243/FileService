@@ -4,8 +4,9 @@ import java.util.Optional;
 
 import org.apache.struts2.ServletActionContext;
 import org.fileservice.Exception.UserNotFountException;
-import org.fileservice.dao.SigninDAO;
 import org.fileservice.model.User;
+import org.fileservice.repository.ProfileRepository;
+import org.mindrot.jbcrypt.BCrypt;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,9 +15,10 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class SigninService {
 
-    SigninDAO signinDAO=new SigninDAO();
+   
+    private ProfileRepository profileRepository;
     
-    public int signinUser(String email,long number,String password){
+    public int signinUser(String email,String number,String password){
 
 
         if(email!=null){
@@ -30,18 +32,12 @@ public class SigninService {
 
     private int  validateCredentialByEmail(String email, String password){
 
-        Optional<User> optionalUser=signinDAO.findUserByEmail(email);
+        Optional<User> optionalUser=profileRepository.findUserByEmail(email);
         if(optionalUser.isEmpty())throw new UserNotFountException("user not exists please signup");
         User user=optionalUser.get();
-		if(!password.equals(user.getPassword()))return 0;
-        HttpServletResponse res = ServletActionContext.getResponse();
-        System.out.println("user id:"+user.getId());
-        Cookie cookie = new Cookie("userId", String.valueOf(user.getId()));
-        cookie.setMaxAge(60 * 60);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);           // localhost only
-        cookie.setPath("/");     
-        res.addCookie(cookie);
+        
+		if(!BCrypt.checkpw(password, user.getPassword()))return 0;
+        setCookie(user.getId());
         
         return user.getId();
 
@@ -50,26 +46,34 @@ public class SigninService {
         
 
     }
-    private int  validateCredentialByNumber(long number, String password){
-        Optional<User> optionalUser=signinDAO.findUserByNumber(number);
+    private int  validateCredentialByNumber(String number, String password){
+        Optional<User> optionalUser=profileRepository.findUserByNumber(number);
         if(optionalUser.isEmpty())throw new UserNotFountException("user not exists please signup");
         User user=optionalUser.get();
 
-        if(!password.equals(user.getPassword()))return 0;
+        if(!BCrypt.checkpw(password, user.getPassword()))return 0;
+        	
+       setCookie(user.getId());
+        
+
+
+        return user.getId();
+    }
+    private void setCookie(int userId){
         HttpServletResponse res = ServletActionContext.getResponse();
-        System.out.println("user id:"+user.getId());
-        Cookie cookie = new Cookie("userId", String.valueOf(user.getId()));
+        System.out.println("user id:"+userId);
+        Cookie cookie = new Cookie("userId", String.valueOf(userId));
         cookie.setMaxAge(60 * 60);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);        
         cookie.setPath("/");    
-        res.addCookie(cookie);	
-       
-        
-
-
-        return user.getId();
+        res.addCookie(cookie);
     }
+
+    public void setProfileRepository(ProfileRepository profileRepository){
+        this.profileRepository=profileRepository;
+    }
+    
     
     
 }

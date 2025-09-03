@@ -7,7 +7,7 @@ public class UserDTO {
     private int id;
     private String name;
     private String email;
-    private long  number;
+    private String  number;
 
     public UserDTO(){}
 
@@ -28,7 +28,7 @@ public class UserDTO {
     public void setEmail(String email){
         this.email=email;
     }
-    public void setNumber(long number){
+    public void setNumber(String number){
         this.number=number;
     }
     
@@ -36,7 +36,7 @@ public class UserDTO {
     public int getId(){
         return this.id;
     }
-    public long getNumber(){
+    public String getNumber(){
         return this.number;
     }
     public String getName(){

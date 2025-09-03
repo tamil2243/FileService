@@ -7,9 +7,9 @@ import org.fileservice.service.SigninService;
 public class SigninAction {
    
     private String email;
-    private long  number;
+    private String  number;
     private String password;
-    private SigninService service=new SigninService();
+    private SigninService signinService;
     private SigninResponseDTO response;
 
 
@@ -20,7 +20,7 @@ public class SigninAction {
         System.out.println("number "+number);
         System.out.println("password "+password);
         try {
-            int  userID=service.signinUser(email, number, password);
+            int  userID=signinService.signinUser(email, number, password);
             	
 
             response=new SigninResponseDTO();
@@ -54,7 +54,7 @@ public class SigninAction {
         this.email=email;
     }
     @StrutsParameter
-    public void setNumber(long number){
+    public void setNumber(String number){
         this.number=number;
     }
     @StrutsParameter
@@ -65,5 +65,9 @@ public class SigninAction {
 
     public SigninResponseDTO getResponse(){
         return this.response;
+    }
+
+    public void setSigninService(SigninService signinService){
+        this.signinService=signinService;
     }
 }

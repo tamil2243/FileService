@@ -1,52 +1,32 @@
 package org.fileservice.action;
 import java.io.InputStream;
-import java.util.Optional;
 
 import org.apache.struts2.ActionSupport;
-import org.apache.struts2.ServletActionContext;
-import org.fileservice.dao.FileDAO;
+import org.fileservice.Exception.FileNotFoundException;
+import org.fileservice.Exception.UnAuthorizedUserException;
 import org.fileservice.dto.DBFIleDownloadResponseDTO;
 import org.fileservice.dto.FileDownloadResponseDTO;
+import org.fileservice.service.FileService;
 
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 
 public class FileDownloadAction extends ActionSupport{
     private InputStream fileInputStream; 
     private String fileName;             
-    private String contentType;          
-    private int userId;  
+    private String contentType;            
     private int fileId;                   
-    private final FileDAO fileDAO=new FileDAO();
+    private FileService fileService;
     private FileDownloadResponseDTO response;
 
     @Override
     public String execute() {
         System.out.println("Entered in Download");
         System.out.println("file id:"+fileId);
-        HttpServletRequest request = ServletActionContext.getRequest();
-        Cookie[] cookies = request.getCookies();
-
-		if(cookies!=null) {
-				for(Cookie c : cookies) {
-					if("userId".equals(c.getName())) {
-							System.out.println("Found userId: " + c.getValue());
-							userId= Integer.parseInt(c.getValue());
-					}
-				}
-		}
-        if(userId==0){
-            response=new FileDownloadResponseDTO(false,"please signin");
-            return "error";
-        }
+        
 
         try {
-            Optional<DBFIleDownloadResponseDTO> optional=fileDAO.fileDownload(fileId);
-            if(optional.isEmpty()){
-                response=new FileDownloadResponseDTO(false,"file not found");
-                return "error";
-            }
-            DBFIleDownloadResponseDTO dpResponse=optional.get();
+            
+            
+            DBFIleDownloadResponseDTO dpResponse=fileService.downloadFile(fileId);
             fileInputStream=dpResponse.getFileInputStream();
             fileName=dpResponse.getFileName();
             contentType=dpResponse.getContentType();
@@ -57,11 +37,17 @@ public class FileDownloadAction extends ActionSupport{
 
 
 
-        } catch (Exception e) {
+        } catch (UnAuthorizedUserException  | FileNotFoundException e) {
 
             response=new FileDownloadResponseDTO(false,e.getMessage());
             return "error";
+        }catch (Exception e) {
+            
+            response=new FileDownloadResponseDTO(false,"Something went wrong");
+            return "error";
         }
+
+        
         
     }
 
@@ -76,4 +62,8 @@ public class FileDownloadAction extends ActionSupport{
 
   
     public void setFileId(int fileId) { this.fileId = fileId; }
+
+    public void setFileService(FileService fileService){
+        this.fileService=fileService;
+    }
 }

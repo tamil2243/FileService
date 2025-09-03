@@ -6,7 +6,9 @@
 <struts>
 	
     <constant name="struts.devMode" value="true" />
-	<constant name="struts.objectFactory" value="struts"/>
+	<!-- <constant name="struts.objectFactory" value="struts"/> -->
+    <constant name="struts.objectFactory" value="spring"/>
+
     <constant name="struts.enable.SlashesInActionNames" value="true"/>
     <constant name="struts.mapper.alwaysSelectFullNamespace" value="false"/>
 
@@ -49,7 +51,7 @@
         <action name="" class="org.fileservice.Main" method="execute">
             <result name="success" type="json"/>
         </action>
-
+        
         <action name="signin" class="org.fileservice.action.SigninAction" method="execute">
             <interceptor-ref name="timingInterceptor"/>
             <interceptor-ref name="json"/>
@@ -62,12 +64,14 @@
             <result name="success" type="json"/>
             <result name="error" type="json"/>
         </action>
-
-        <action name="user" class="org.fileservice.action.ProfileAction" method="executeGetPost">
-            <interceptor-ref name="conditionalJsonStack"/>
+        <action name="changePassword" class="org.fileservice.action.ChangePasswordAction" method="execute">
+            <interceptor-ref name="timingInterceptor"/>
+            <interceptor-ref name="json"/>
             <result name="success" type="json"/>
             <result name="error" type="json"/>
         </action>
+
+       
         <action name="user/*" class="org.fileservice.action.ProfileAction" method="executeGetPut">
             <interceptor-ref name="conditionalJsonStack"/>
             <result name="success" type="json"/>
@@ -78,6 +82,7 @@
             <interceptor-ref name="fileUploadJsonStack"/>
             <result name="success" type="json"/>
             <result name="error" type="json"/>
+            <result name="input" type="json"/>
         </action>
 
         <action name="downloadFileDB" class="org.fileservice.action.FileDownloadAction">
@@ -91,20 +96,17 @@
             <result name="error" type="json"/>
         </action>
 
+        <action name="deleteFile" class="org.fileservice.action.FileDeleteAction" method="execute">
+            <interceptor-ref name="json"/>
+            <result name="success" type="json"/>
+            <result name="error" type="json"/>
+        </action>
+
         <action name="viewFiles" class="org.fileservice.action.FileViewAction" method="execute">
             <result name="success" type="json"/>
             <result name="error" type="json"/>
         </action>
-        <action name="canDownload" class="org.fileservice.action.FilePermissionAction" method="canDownload">
-            <interceptor-ref name="json"/>
-            <result name="success" type="json"/>
-            <result name="error" type="json"/>
-        </action>
-        <action name="canDelete" class="org.fileservice.action.FilePermissionAction" method="canDelete">
-            <interceptor-ref name="json"/>
-            <result name="success" type="json"/>
-            <result name="error" type="json"/>
-        </action>
+       
         <action name="setPermission" class="org.fileservice.action.FilePermissionAction" method="setPermission">
             <interceptor-ref name="json"/>
             <result name="success" type="json"/>
