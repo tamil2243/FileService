@@ -65,7 +65,7 @@ public class FileService {
         
             
         if(!fileRepository.hasDownloadPermission(userId, fileId)){
-            throw new UnAuthorizedUserException("user haven't access to download file");
+            throw new UnAuthorizedUserException("you haven't access to download file");
         }
 
         Optional<DBFIleDownloadResponseDTO> optional=fileRepository.getFileForDownload(fileId);

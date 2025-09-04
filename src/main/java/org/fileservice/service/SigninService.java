@@ -3,6 +3,7 @@ package org.fileservice.service;
 import java.util.Optional;
 
 import org.apache.struts2.ServletActionContext;
+import org.fileservice.Exception.PasswordMismachException;
 import org.fileservice.Exception.UserNotFountException;
 import org.fileservice.model.User;
 import org.fileservice.repository.ProfileRepository;
@@ -31,12 +32,14 @@ public class SigninService {
     }
 
     private int  validateCredentialByEmail(String email, String password){
+        if(email==null || email.isEmpty())throw new NullPointerException("login fields can't be empty");
+        if(password==null || password.isEmpty())throw new NullPointerException("login fields can't be empty");
 
         Optional<User> optionalUser=profileRepository.findUserByEmail(email);
         if(optionalUser.isEmpty())throw new UserNotFountException("user not exists please signup");
         User user=optionalUser.get();
         
-		if(!BCrypt.checkpw(password, user.getPassword()))return 0;
+		if(!BCrypt.checkpw(password, user.getPassword()))throw new PasswordMismachException("Enter correct password");
         setCookie(user.getId());
         
         return user.getId();
@@ -47,13 +50,16 @@ public class SigninService {
 
     }
     private int  validateCredentialByNumber(String number, String password){
+        if(number==null || number.isEmpty())throw new NullPointerException("login fields can't be empty");
+        if(password==null || password.isEmpty())throw new NullPointerException("login fields can't be empty");
+
         Optional<User> optionalUser=profileRepository.findUserByNumber(number);
         if(optionalUser.isEmpty())throw new UserNotFountException("user not exists please signup");
         User user=optionalUser.get();
 
-        if(!BCrypt.checkpw(password, user.getPassword()))return 0;
+		if(!BCrypt.checkpw(password, user.getPassword()))throw new PasswordMismachException("Enter correct password");
         	
-       setCookie(user.getId());
+        setCookie(user.getId());
         
 
 

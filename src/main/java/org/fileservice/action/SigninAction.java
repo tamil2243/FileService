@@ -1,6 +1,8 @@
 package org.fileservice.action;
 
 import org.apache.struts2.interceptor.parameter.StrutsParameter;
+import org.fileservice.Exception.PasswordMismachException;
+import org.fileservice.Exception.UserNotFountException;
 import org.fileservice.dto.SigninResponseDTO;
 import org.fileservice.service.SigninService;
 
@@ -21,25 +23,16 @@ public class SigninAction {
         System.out.println("password "+password);
         try {
             int  userID=signinService.signinUser(email, number, password);
-            	
+            response=new SigninResponseDTO(true,"succesffully signed in");  
+            response.setUserId(userID);
+            return "success";
 
-            response=new SigninResponseDTO();
-          
-            if(userID!=0){
-                response.setMessage("succesffully signed in");
-                response.setUserId(userID);
-                response.setStatus(true);
-                return "success";
-            }
-            else{
-                response.setMessage("enter correct passowrd");
-                return "error";
-            }
-
-        } catch (Exception e) {
-            response=new SigninResponseDTO();
-            response.setStatus(false);
-            response.setMessage(e.getMessage());
+        }catch(UserNotFountException | NullPointerException | PasswordMismachException e){
+            response=new SigninResponseDTO(false,e.getMessage());
+            return "error";
+        } 
+        catch (Exception e) {
+            response=new SigninResponseDTO(false,"Something went wrong durning signin");
             return "error";
         }
     }
