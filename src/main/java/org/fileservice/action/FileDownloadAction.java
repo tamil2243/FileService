@@ -4,7 +4,7 @@ import java.io.InputStream;
 import org.apache.struts2.ActionSupport;
 import org.fileservice.Exception.FileNotFoundException;
 import org.fileservice.Exception.UnAuthorizedUserException;
-import org.fileservice.dto.DBFIleDownloadResponseDTO;
+import org.fileservice.dto.DBFileDownloadResponseDTO;
 import org.fileservice.dto.FileDownloadResponseDTO;
 import org.fileservice.service.FileService;
 
@@ -26,7 +26,7 @@ public class FileDownloadAction extends ActionSupport{
         try {
             
             
-            DBFIleDownloadResponseDTO dpResponse=fileService.downloadFile(fileId);
+            DBFileDownloadResponseDTO dpResponse=fileService.downloadFile(fileId);
             fileInputStream=dpResponse.getFileInputStream();
             fileName=dpResponse.getFileName();
             contentType=dpResponse.getContentType();

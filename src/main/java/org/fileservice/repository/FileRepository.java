@@ -1,7 +1,5 @@
 package org.fileservice.repository;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,7 +9,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.fileservice.Exception.UpdateFailedException;
-import org.fileservice.dto.DBFIleDownloadResponseDTO;
 import org.fileservice.model.FileMeta;
 
 
@@ -20,22 +17,24 @@ public class FileRepository {
 
 
 
-    public void uploadFile(String fileName, String contentType, FileInputStream fis, File file, int userId)throws Exception{
+    public void uploadFile(String fileName, String contentType, double size,String file_path,int userId,String description)throws Exception{
         Connection con = null;
         PreparedStatement uploadStmt = null;
         PreparedStatement permissionStmt=null;
+        PreparedStatement descPermissionStmt=null;
         try {
 
             
             con=DBConnection.getConnection();
             con.setAutoCommit(false);
             uploadStmt=con.prepareStatement(
-                "INSERT INTO files (file_name, file_type, file_data,uploader_id) VALUES (?, ?, ?,?)",Statement.RETURN_GENERATED_KEYS);
+                "INSERT INTO files (file_name, file_type, file_size,uploader_id,file_path) VALUES (?, ?, ?,?,?)",Statement.RETURN_GENERATED_KEYS);
             
             uploadStmt.setString(1, fileName);
             uploadStmt.setString(2, contentType);
-            uploadStmt.setBinaryStream(3, fis, (int) file.length()); 
+            uploadStmt.setDouble(3, size); 
             uploadStmt.setInt(4, userId);
+            uploadStmt.setString(5, file_path);
 
             int affectedRowsForFileUpload= uploadStmt.executeUpdate();
             System.out.println("File uploaded successfully");
@@ -49,17 +48,22 @@ public class FileRepository {
                 }
             }
 
-            permissionStmt = con.prepareStatement("insert into file_permissions(user_id,file_id,can_download,can_delete) values(?,?,?,?)");
+            permissionStmt = con.prepareStatement("insert into file_permissions(user_id,file_id,permission) values(?,?,(select sum(id) from permission))");
             permissionStmt.setInt(1, userId);
             permissionStmt.setInt(2, file_id);
-            permissionStmt.setBoolean(3, true);
-            permissionStmt.setBoolean(4, true);
+            
             int affectedRowsForPermission=permissionStmt.executeUpdate();
 
             if(affectedRowsForFileUpload==0 || affectedRowsForPermission==0){
                 throw new UpdateFailedException("File can't  upload");
             }
 
+            descPermissionStmt=con.prepareStatement("insert into file_descriptions(file_id,description) values(?,?)");
+            descPermissionStmt.setInt(1, file_id);
+            descPermissionStmt.setString(2, description);
+            if(descPermissionStmt.executeUpdate()==0){
+                throw new UpdateFailedException("File can't  upload");
+            }
             con.commit();
             System.out.println("Transaction successful!");
         }
@@ -83,74 +87,53 @@ public class FileRepository {
            
             if (uploadStmt != null) uploadStmt.close();
             if (permissionStmt != null) permissionStmt.close();
+            if(descPermissionStmt!=null)descPermissionStmt.close();
             if (con != null) {
                 con.setAutoCommit(true); 
                 con.close();
             }
         }
     }
-    public Optional<DBFIleDownloadResponseDTO> getFileForDownload(int fileId){
-        DBFIleDownloadResponseDTO response=null;
+    public Optional<FileMeta> getFileMetaDetails(int fileId){
+        FileMeta fileMeta=null;
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
-                "SELECT file_name, file_type, file_data FROM files WHERE id=?")) {
-            System.out.println("from dow id:"+fileId);
+                "SELECT file_name, file_type, file_size,file_path FROM files WHERE id=?")) {
+            
             
             ps.setInt(1, fileId);
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
-                response=new DBFIleDownloadResponseDTO();
-                response.setFileName(rs.getString("file_name"));
-                response.setContentType(rs.getString("file_type"));
-                response.setFileInputStream(rs.getBinaryStream("file_data"));
+                fileMeta=new FileMeta();
+                fileMeta.setFileName(rs.getString("file_name"));
+                fileMeta.setFileType(rs.getString("file_type"));
+                fileMeta.setFilePath(rs.getString("file_path"));
+                fileMeta.setFileSize(rs.getDouble("file_size"));
+                
                 
             } 
 
-            return Optional.ofNullable(response);
+            return Optional.ofNullable(fileMeta);
         } catch (Exception e) {
             e.printStackTrace();
-            return Optional.ofNullable(response);
+            return Optional.ofNullable(fileMeta);
         } 
 
 
     }
-    public int getFileId(String fileName, int userId){
+    
+
+    public int addPermission(int userId,int fileId,int permision){
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
-                "SELECT id FROM files WHERE file_name=? and uploader_id=?")) {
-            System.out.println("from dow name:"+fileName);
-            
-            ps.setString(1, fileName);
-            ps.setInt(2, userId);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                
-               return rs.getInt("id");
-                
-            } 
-
-            
-        } catch(Exception e){
-            e.printStackTrace();
-        }
-        return 0;
-        
-    }
-
-    public int addPermission(int userId,int fileId,boolean download, boolean delete){
-
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                "insert into file_permissions(user_id,file_id,can_download,can_delete) values(?,?,?,?)")) {
+                "insert into file_permissions(user_id,file_id,permission) values(?,?,?)")) {
 
                     ps.setInt(1, userId);
                     ps.setInt(2, fileId);
-                    ps.setBoolean(3, download);
-                    ps.setBoolean(4, delete);
+                    ps.setInt(3, permision);
 
                     return ps.executeUpdate();
             
@@ -161,16 +144,16 @@ public class FileRepository {
 
 
     }
-    public int updatePermission(int userId,int fileId,boolean download, boolean delete){
-
+    public int updatePermission(int userId,int fileId,int permission){
+        System.out.println("Entered in update permission method");
+        String query="UPDATE file_permissions target JOIN file_permissions source ON source.user_id = target.user_id AND source.file_id = target.file_id SET target.permission = source.permission|? WHERE target.user_id = ? AND target.file_id = ?";
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                
-                "update file_permissions set can_download=?,can_delete=? where user_id=? and file_id=?")) {
-                    ps.setBoolean(1, download);
-                    ps.setBoolean(2, delete);
-                    ps.setInt(3, userId);
-                    ps.setInt(4, fileId);
+             PreparedStatement ps = con.prepareStatement(query)) {
+                    ps.setInt(1, permission);
+                    ps.setInt(2, userId);
+                    ps.setInt(3, fileId);
+                    
+                   
                     
                     return ps.executeUpdate();
             
@@ -189,33 +172,48 @@ public class FileRepository {
                     ps.setInt(1, file_id);
                     ps.setInt(2, userId);
                     ResultSet rs=ps.executeQuery();
-                    if(rs.next()){
-
-                        return true;
-                    }
-                    return false;
+                    return rs.next();
             
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
+    
     public boolean hasDownloadPermission(int userId, int file_id){
+            String query="select * from file_permissions fp join permission p on fp.permission&p.id>0 where p.permission_type='Download' and file_id=? and user_id=?";
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                "select id,can_download from file_permissions where file_id=? and user_id=?")) {
+             PreparedStatement ps = con.prepareStatement(query)) {
 
                     ps.setInt(1, file_id);
                     ps.setInt(2, userId);
                     
 
                     ResultSet rs=ps.executeQuery();
-                    if(rs.next()){
+                    return rs.next();
+                    
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public boolean hasSharePermission(int userId,int file_id){
+        System.out.println("Share permission permision checker method");
+       
+        String query="select * from file_permissions fp join permission p on fp.permission&p.id>0 where p.permission_type='share' and file_id=? and user_id=?";
+        
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(query
+                )) {
 
-                        return rs.getBoolean("can_download");
-                    }
-                    return false;
+                    ps.setInt(1, file_id);
+                    ps.setInt(2, userId);
+                    
+
+                    ResultSet rs=ps.executeQuery();
+                    return rs.next();
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -224,22 +222,19 @@ public class FileRepository {
     }
     public boolean hasDeletePermission(int userId, int file_id){
         System.out.println("delete permision checker method");
-
+       
+        String query="select * from file_permissions fp join permission p on fp.permission&p.id>0 where p.permission_type='Delete' and file_id=? and user_id=?";
+        
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                "select id,can_delete from file_permissions where file_id=? and user_id=?")) {
+             PreparedStatement ps = con.prepareStatement(query
+                )) {
 
                     ps.setInt(1, file_id);
                     ps.setInt(2, userId);
                     
 
                     ResultSet rs=ps.executeQuery();
-                    if(rs.next()){
-                        System.out.println("permission fetched");
-                        return rs.getBoolean("can_delete");
-                    }
-                
-                    return false;
+                    return rs.next();
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -247,20 +242,25 @@ public class FileRepository {
         }
     }
 
-    public List<FileMeta> listAllFiles(){
+    public List<FileMeta> getAllFiles(int userId){
         List<FileMeta> list=new ArrayList<>();
+        
+        String query="with temp as(select id,file_name,file_type , file_size ,file_path from files where id in(select file_id from file_permissions where user_id=? ))select t.id as id,t.file_name as file_name,t.file_type as file_type, t.file_path as file_path,t.file_size as file_size,fd.description as file_description from temp t join file_descriptions fd on fd.file_id=t.id";
+     
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
-                "select id,file_name,file_type from files")) {
-
-                    
-
+                query)) {
+                   
+                    ps.setInt(1, userId);
                     ResultSet rs=ps.executeQuery();
                     while(rs.next()){
                         FileMeta file=new FileMeta();
                         file.setFileId(rs.getInt("id"));
                         file.setFileName(rs.getString("file_name"));
                         file.setFileType(rs.getString("file_type"));
+                        file.setFileSize(rs.getDouble("file_size"));
+                        file.setFilePath(rs.getString("file_path"));
+                        file.setDescription(rs.getString("file_description"));
                         list.add(file);
                     }
                     return list;
@@ -272,9 +272,7 @@ public class FileRepository {
     }
     public int deleteFile(int fileId){
        
-       
-
-       
+  
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
                 "delete from files where id=?")) {
@@ -290,20 +288,54 @@ public class FileRepository {
         
 
     }
-    public int deletePermission(int fileId){
-         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                "delete from file_permissions  where file_id=?")) {
-                    ps.setInt(1, fileId);
-                    return ps.executeUpdate();
 
-                   
+    public int getPermissionValue(String permissionType){
+        String query="select id from permission where permission_type=?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(query)) {
+                ps.setString(1, permissionType);
+                
+                ResultSet rs=ps.executeQuery();
+                if(rs.next())return rs.getInt("id");
+                return 0;
+                    
+                    
         } catch (Exception e) {
             e.printStackTrace();
             return 0;
             
         }
+
     }
+
+    public List<String> getUserDetailsUsingFileId(int fileId){
+        List<String> user=new ArrayList<>();
+        String query="select ud.name as name from user_details ud join file_permissions fp on ud.id=fp.user_id where file_id=?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(query)) {
+               ps.setInt(1, fileId);
+                
+                ResultSet rs=ps.executeQuery();
+
+                while(rs.next()){
+                    user.add(rs.getString("name"));
+                }
+                return user;
+                
+                    
+                    
+        } catch (Exception e) {
+            e.printStackTrace();
+            return user;
+            
+        }
+
+    }
+    
+
+
+
+  
     
     
 }

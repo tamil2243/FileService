@@ -36,6 +36,7 @@ public class CorsFilter implements Filter{
 	
 
         chain.doFilter(req, res);
+        System.out.println("exited in from corsFilter");
     }
 
     @Override

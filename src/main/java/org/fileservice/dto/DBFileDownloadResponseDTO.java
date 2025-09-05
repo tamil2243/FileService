@@ -1,7 +1,7 @@
 package org.fileservice.dto;
 import java.io.InputStream;
 
-public class DBFIleDownloadResponseDTO {
+public class DBFileDownloadResponseDTO {
     private InputStream fileInputStream; 
     private String fileName;             
     private String contentType; 

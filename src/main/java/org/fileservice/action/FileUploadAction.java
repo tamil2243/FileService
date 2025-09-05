@@ -2,11 +2,13 @@ package org.fileservice.action;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
 
 import org.apache.struts2.ActionSupport;
 import org.apache.struts2.action.UploadedFilesAware;
 import org.apache.struts2.dispatcher.multipart.UploadedFile;
+import org.apache.struts2.interceptor.parameter.StrutsParameter;
 import org.fileservice.Exception.UnAuthorizedUserException;
 import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.dto.FileUploadResponseDTO;
@@ -20,9 +22,12 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
     private String originalName;
     private FileService fileService;
     private FileUploadResponseDTO response;
+    private String description;
 
+   
     @Override
     public void withUploadedFiles(List<UploadedFile> uploadedFiles) {
+        System.out.println("UploadedFilesAware interface executed");
         if (uploadedFiles != null && !uploadedFiles.isEmpty()) {
             this.uploadedFile = uploadedFiles.get(0);
             this.fileName = uploadedFile.getName();
@@ -44,11 +49,13 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
         System.out.println("Server Temp Name: " + fileName);
         System.out.println("Content Type: " + contentType);
         System.out.println("Size: " + uploadedFile.length());
+       
+        System.out.println("description :"+description);
 
        
        try {
             File file = (File) uploadedFile.getContent();
-            fileService.uploadFile(file, originalName, contentType);
+            fileService.uploadFile(file, originalName, contentType,description);
             response=new FileUploadResponseDTO(true,"file successfully uploaded");
             return "success";
        } 
@@ -56,8 +63,13 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
             response=new FileUploadResponseDTO(false,e.getMessage());
             return "error";
        }
+       catch (FileAlreadyExistsException e) {
+            response=new FileUploadResponseDTO(false,"File Alredy exists");
+            return "error";
+       }
        catch (Exception e) {
             response=new FileUploadResponseDTO(false,"Something went wrong");
+            e.printStackTrace();
             return "error";
        }
 
@@ -79,4 +91,10 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
     public void setFileService(FileService fileService){
         this.fileService=fileService;
     }
+
+    @StrutsParameter
+    public void setDescription(String description){
+        this.description=description;
+    }
+    
 }

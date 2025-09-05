@@ -13,5 +13,5 @@ public class FileDownloadResponseDTO extends ResponseDTO{
         super(status,message);
     }
     
-   
+    
 }
