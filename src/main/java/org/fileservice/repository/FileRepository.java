@@ -11,6 +11,7 @@ import java.util.Optional;
 import org.fileservice.Exception.MaximumFileLimitExceeded;
 import org.fileservice.Exception.MaximumFileSizeExceeded;
 import org.fileservice.Exception.UpdateFailedException;
+import org.fileservice.dto.UserDTO;
 import org.fileservice.model.FileMeta;
 
 
@@ -61,7 +62,7 @@ public class FileRepository {
             uploadStmt.setString(5, file_path);
 
             int affectedRowsForFileUpload= uploadStmt.executeUpdate();
-            System.out.println("File uploaded successfully");
+            
            
             int file_id = 0;
             try (ResultSet generatedKeys = uploadStmt.getGeneratedKeys()) {
@@ -89,13 +90,13 @@ public class FileRepository {
                 throw new UpdateFailedException("File can't  upload");
             }
             con.commit();
-            System.out.println("Transaction successful!");
+           
         }
         catch(UpdateFailedException | MaximumFileLimitExceeded |MaximumFileSizeExceeded e){
             if (con != null) {
                
                 con.rollback();
-                System.out.println("Transaction rolled back due to error: " + e.getMessage());
+                
             }
             throw e; 
         }
@@ -103,7 +104,7 @@ public class FileRepository {
             if (con != null) {
                
                 con.rollback();
-                System.out.println("Transaction rolled back due to error: " + "Something went wrong during file upload");
+               
                 e.printStackTrace();
             }
             throw e;  
@@ -170,7 +171,7 @@ public class FileRepository {
 
     }
     public int updatePermission(int userId,int fileId,int permission)throws MaximumFileLimitExceeded,Exception{
-        System.out.println("Entered in update permission method");
+       
         Connection con =null;
         PreparedStatement ps =null;
         PreparedStatement check=null;
@@ -269,7 +270,7 @@ public class FileRepository {
     }
     
     public boolean hasSharePermission(int userId,int file_id){
-        System.out.println("Share permission permision checker method");
+        
        
         String query="select * from file_permissions fp join permission p on fp.permission&p.id>0 where p.permission_type='share' and file_id=? and user_id=?";
         
@@ -290,7 +291,7 @@ public class FileRepository {
         }
     }
     public boolean hasDeletePermission(int userId, int file_id){
-        System.out.println("delete permision checker method");
+      
        
         String query="select * from file_permissions fp join permission p on fp.permission&p.id>0 where p.permission_type='Delete' and file_id=? and user_id=?";
         
@@ -396,6 +397,39 @@ public class FileRepository {
         } catch (Exception e) {
             e.printStackTrace();
             return user;
+            
+        }
+
+    }
+
+
+    public List<UserDTO> getNonViewAccessUsers(int fileId){
+
+
+        List<UserDTO> users=new ArrayList<>();
+        String query="SELECT ud.id, ud.name,ud.email,ud.number FROM user_details ud LEFT JOIN file_permissions fp ON ud.id = fp.user_id AND fp.file_id = ? LEFT JOIN permission p   ON p.permission_type = 'view' WHERE fp.user_id IS NULL     OR (fp.permission & p.id) = 0";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(query)) {
+               
+                ps.setInt(1, fileId);
+                
+                ResultSet rs=ps.executeQuery();
+
+                while(rs.next()){
+                    UserDTO user=new UserDTO();
+                    user.setId(rs.getInt("id"));
+                    user.setName(rs.getString("name"));
+                    user.setEmail(rs.getString("email"));
+                    user.setNumber(rs.getString("number"));
+                    users.add(user);
+                }
+                return users;
+                
+                    
+                    
+        } catch (Exception e) {
+            e.printStackTrace();
+            return users;
             
         }
 

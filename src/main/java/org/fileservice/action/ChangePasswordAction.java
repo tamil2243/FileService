@@ -6,7 +6,7 @@ import org.fileservice.Exception.UnAuthorizedUserException;
 import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.Exception.UserNotFountException;
 import org.fileservice.dto.ChangePasswordResponseDTO;
-import org.fileservice.service.ChangePasswordService;
+import org.fileservice.service.ProfileService;
 
 public class ChangePasswordAction extends ActionSupport{
 
@@ -15,7 +15,7 @@ public class ChangePasswordAction extends ActionSupport{
     private String currentPassword;
     private String newPassword;
     private ChangePasswordResponseDTO response;
-    private ChangePasswordService changePasswordService;
+    private ProfileService profileService;
 
     public String execute(){
 
@@ -25,7 +25,7 @@ public class ChangePasswordAction extends ActionSupport{
         try {
             
 
-            changePasswordService.changePassword(currentPassword, newPassword);
+            profileService.changePassword(currentPassword, newPassword);
             response=new ChangePasswordResponseDTO(true,"password changed");
             return "success";
 
@@ -49,8 +49,8 @@ public class ChangePasswordAction extends ActionSupport{
         return this.response;
     }
 
-    public void setChangePasswordService(ChangePasswordService changePasswordService){
-        this.changePasswordService=changePasswordService;
+    public void setProfileService(ProfileService profileService){
+        this.profileService=profileService;
     }
     
 }

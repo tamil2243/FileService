@@ -19,7 +19,7 @@ public class FileDeleteAction extends ActionSupport{
 
 
         System.out.println("Entered in FileDeletAction");
-        System.out.println("fileId :"+fileId);
+      
        
 
 

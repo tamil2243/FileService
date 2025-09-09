@@ -20,7 +20,7 @@ public class FileDownloadAction extends ActionSupport{
     @Override
     public String execute() {
         System.out.println("Entered in Download");
-        System.out.println("file id:"+fileId);
+        
         
 
         try {

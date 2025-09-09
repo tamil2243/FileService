@@ -14,6 +14,7 @@ import org.fileservice.Exception.UnAuthorizedUserException;
 import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.Exception.UserNotFountException;
 import org.fileservice.dto.DBFileDownloadResponseDTO;
+import org.fileservice.dto.UserDTO;
 import org.fileservice.model.FileMeta;
 import org.fileservice.model.User;
 import org.fileservice.repository.FileRepository;
@@ -63,7 +64,7 @@ public class FileService {
     }
     public void uploadFile(File file,String fileName,String contentType, String description)throws UpdateFailedException,UnAuthorizedUserException, MaximumFileLimitExceeded,MaximumFileSizeExceeded,Exception{
         int userId=cookieService.getUserId();
-        System.out.println("entered in file service");
+
         File targetFile = new File(UPLOAD_DIR + userId+"_"+fileName);
         long sizeInBytes = file.length();
         double sizeInMB = (double) sizeInBytes / 1024;
@@ -124,7 +125,7 @@ public class FileService {
             } catch (java.io.FileNotFoundException e) {
                 throw new FileNotFoundException("Stored file is missing at path: " +fileMeta.getFilePath());
             }
-        // return dto;
+       
      
     }
     public DBFileDownloadResponseDTO viewFile(int fileId){
@@ -156,7 +157,7 @@ public class FileService {
             } catch (java.io.FileNotFoundException e) {
                 throw new FileNotFoundException("Stored file is missing at path: " +fileMeta.getFilePath());
             }
-        // return dto;
+       
      
     }
     
@@ -186,11 +187,10 @@ public class FileService {
         boolean isUserPermissionExists=fileRepository.isUserPermissionExists(user.getId(), fileId);
         int affectedRows;
         if(isUserPermissionExists){
-            System.out.println("Goes into update permission method");
+
             affectedRows=fileRepository.updatePermission(user.getId(), fileId, permision);
         }
         else{
-            System.out.println("Goes into add permission method");
             affectedRows=fileRepository.addPermission(user.getId(), fileId, permision);
         }
         if(affectedRows==0){
@@ -212,7 +212,42 @@ public class FileService {
         return listOFileMetas;
    
     }
+    public List<UserDTO> getNonViewAccessUsers(int fileId){
 
+        return fileRepository.getNonViewAccessUsers(fileId);
+    }
+    public void setViewAccessListOfUsers(int fileId,List<UserDTO> listOfUsers)throws UnAuthorizedUserException,UserNotFountException,UpdateFailedException, Exception{
+        
+        int userId=cookieService.getUserId();
+
+        if(!fileRepository.hasSharePermission(userId, fileId)){
+            throw new UnAuthorizedUserException("you haven't access to modify  permissions");
+            
+        }
+        
+        for(UserDTO user:listOfUsers){
+            
+            boolean isUserPermissionExists=fileRepository.isUserPermissionExists(user.getId(), fileId);
+            
+            int permision=fileRepository.getPermissionValue("view");
+            int affectedRows;
+            if(isUserPermissionExists){
+                
+                affectedRows=fileRepository.updatePermission(user.getId(), fileId, permision);
+            }
+            else{
+                
+                affectedRows=fileRepository.addPermission(user.getId(), fileId, permision);
+            }
+            if(affectedRows==0){
+                throw new UpdateFailedException("failed to setPermission");
+            }
+
+
+        }
+        
+        
+    }
     
     public void setCookieService(CookieService cookieService){
         this.cookieService=cookieService;
@@ -223,5 +258,8 @@ public class FileService {
     public void setFileRepository(FileRepository fileRepository){
         this.fileRepository=fileRepository;
     }
+
+
+
     
 }

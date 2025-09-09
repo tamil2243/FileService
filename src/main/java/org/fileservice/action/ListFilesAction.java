@@ -20,7 +20,7 @@ public class ListFilesAction extends ActionSupport{
 
     @Override
     public String execute(){
-        System.out.println("Entered in FileViewAction");
+        System.out.println("Entered in ListFilesAction");
         
 
         try {

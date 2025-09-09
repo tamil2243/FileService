@@ -40,7 +40,7 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
 
      
        
-        System.out.println("description :"+description);
+       
 
        
        try {

@@ -13,10 +13,6 @@
     <constant name="struts.mapper.alwaysSelectFullNamespace" value="false"/>
 
 
-    
-    <!--<constant name="struts.allowlist.classes" value="com.example.model.User"/>-->
-
-   
     <package name="default" namespace="/api" extends="struts-default,json-default">
 
 
@@ -129,6 +125,19 @@
             <result name="success" type="json"/>
             <result name="error" type="json"/>
         </action>
+        <action name="getNonViewAccessUsers" class="org.fileservice.action.FilePermissionAction" method="getNonViewAccessUsers">
+            <interceptor-ref name="timingInterceptor"/>
+            <interceptor-ref name="json"/>
+            <result name="success" type="json"/>
+            <result name="error" type="json"/>
+        </action>
+        <action name="setViewAccessListOfUsers" class="org.fileservice.action.FilePermissionAction" method="setViewAccessListOfUsers">
+            <interceptor-ref name="timingInterceptor"/>
+            <interceptor-ref name="json"/>
+            <result name="success" type="json"/>
+            <result name="error" type="json"/>
+        </action>
+        
         
         
 

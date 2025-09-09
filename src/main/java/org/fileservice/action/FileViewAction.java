@@ -21,8 +21,8 @@ public class FileViewAction extends ActionSupport{
 
     @Override
     public String execute() {
-        System.out.println("Entered in Download");
-        System.out.println("file id:"+fileId);
+        System.out.println("Entered in FileViewAction");
+       
         
 
         try {

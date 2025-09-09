@@ -1,9 +1,11 @@
 package org.fileservice.dto;
 
+import java.util.List;
+
 public class FilePermissionResponseDTO extends ResponseDTO{
 
     private boolean permission;
-    
+    private List<UserDTO> listOfUsers;
 
     public FilePermissionResponseDTO(){}
     public FilePermissionResponseDTO(boolean status,String message){
@@ -19,4 +21,17 @@ public class FilePermissionResponseDTO extends ResponseDTO{
         return this.permission;
     }
     
+
+   
+
+
+    
+
+    public void setListOfUsers(List<UserDTO> listOfUsers){
+        this.listOfUsers=listOfUsers;
+    }
+    
+    public List<UserDTO> getListOfUsers(){
+        return this.listOfUsers;
+    }
 }
