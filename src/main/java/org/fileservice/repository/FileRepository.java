@@ -8,25 +8,49 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.fileservice.Exception.MaximumFileLimitExceeded;
+import org.fileservice.Exception.MaximumFileSizeExceeded;
 import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.model.FileMeta;
 
 
 
 public class FileRepository {
+    private final double MAXIMUM_ALLOWED_SIZE=10;
 
 
-
-    public void uploadFile(String fileName, String contentType, double size,String file_path,int userId,String description)throws Exception{
+    public void uploadFile(String fileName, String contentType, double size,String file_path,int userId,String description)throws MaximumFileSizeExceeded,MaximumFileLimitExceeded,UpdateFailedException,Exception{
         Connection con = null;
         PreparedStatement uploadStmt = null;
         PreparedStatement permissionStmt=null;
         PreparedStatement descPermissionStmt=null;
+        PreparedStatement check=null;
+        PreparedStatement sizeCheckStmt=null;
         try {
 
             
             con=DBConnection.getConnection();
             con.setAutoCommit(false);
+            // check user has how many files
+            String checkQuery="select count(*) as total from file_permissions where user_id=? for update";
+            check=con.prepareStatement(checkQuery);
+            check.setInt(1, userId);
+            ResultSet rs=check.executeQuery();
+            if(rs.next() && rs.getInt("total")>=10)throw new MaximumFileLimitExceeded("user alredy has 10  files");
+
+
+            String sizeQuery="select sum(f.file_size) as file_size from files f join file_permissions fp on fp.file_id=f.id where fp.user_id=?";
+            sizeCheckStmt=con.prepareStatement(sizeQuery);
+            sizeCheckStmt.setInt(1, userId);
+            double currentSize=0;
+            ResultSet resultForSize=sizeCheckStmt.executeQuery();
+            if(resultForSize.next()){
+                currentSize=resultForSize.getDouble("file_size");
+            }
+            if(currentSize+size>MAXIMUM_ALLOWED_SIZE)throw new MaximumFileSizeExceeded("Maximum file size exceeded. Allowed size Only 10 MB");
+
+
+            // if user has less than 10 files proceed to upload a file
             uploadStmt=con.prepareStatement(
                 "INSERT INTO files (file_name, file_type, file_size,uploader_id,file_path) VALUES (?, ?, ?,?,?)",Statement.RETURN_GENERATED_KEYS);
             
@@ -67,7 +91,7 @@ public class FileRepository {
             con.commit();
             System.out.println("Transaction successful!");
         }
-        catch(UpdateFailedException e){
+        catch(UpdateFailedException | MaximumFileLimitExceeded |MaximumFileSizeExceeded e){
             if (con != null) {
                
                 con.rollback();
@@ -84,7 +108,8 @@ public class FileRepository {
             }
             throw e;  
         } finally {
-           
+            if(check!=null)check.close();
+            if(sizeCheckStmt!=null)sizeCheckStmt.close();
             if (uploadStmt != null) uploadStmt.close();
             if (permissionStmt != null) permissionStmt.close();
             if(descPermissionStmt!=null)descPermissionStmt.close();
@@ -144,22 +169,46 @@ public class FileRepository {
 
 
     }
-    public int updatePermission(int userId,int fileId,int permission){
+    public int updatePermission(int userId,int fileId,int permission)throws MaximumFileLimitExceeded,Exception{
         System.out.println("Entered in update permission method");
-        String query="UPDATE file_permissions target JOIN file_permissions source ON source.user_id = target.user_id AND source.file_id = target.file_id SET target.permission = source.permission|? WHERE target.user_id = ? AND target.file_id = ?";
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(query)) {
-                    ps.setInt(1, permission);
-                    ps.setInt(2, userId);
-                    ps.setInt(3, fileId);
-                    
-                   
-                    
-                    return ps.executeUpdate();
+        Connection con =null;
+        PreparedStatement ps =null;
+        PreparedStatement check=null;
+        try  {  
+
+            con = DBConnection.getConnection();
+            con.setAutoCommit(false);
+            String checkQuery="select count(*) as total from file_permissions where user_id=? for update";
+            check=con.prepareStatement(checkQuery);
+            check.setInt(1, userId);
+            ResultSet rs=check.executeQuery();
+            if(rs.next() && rs.getInt("total")>=10)throw new MaximumFileLimitExceeded("user alredy has 10 files");
             
-        } catch (Exception e) {
+            String query="UPDATE file_permissions target JOIN file_permissions source ON source.user_id = target.user_id AND source.file_id = target.file_id SET target.permission = source.permission|? WHERE target.user_id = ? AND target.file_id = ?";
+
+            ps = con.prepareStatement(query);
+            ps.setInt(1, permission);
+            ps.setInt(2, userId);
+            ps.setInt(3, fileId);
+            
+            
+            
+            return ps.executeUpdate();
+            
+        }catch(MaximumFileLimitExceeded e){
+            throw e;
+        } 
+        catch (Exception e) {
             e.printStackTrace();
             return 0;
+        }finally {
+           
+            if (ps != null) ps.close();
+            if (check != null) check.close();
+            if (con != null) {
+                con.setAutoCommit(true); 
+                con.close();
+            }
         }
 
 
@@ -199,6 +248,26 @@ public class FileRepository {
             return false;
         }
     }
+    public boolean hasViewPermission(int userId, int file_id){
+            String query="select * from file_permissions fp join permission p on fp.permission&p.id>0 where p.permission_type='View' and file_id=? and user_id=?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(query)) {
+
+                    ps.setInt(1, file_id);
+                    ps.setInt(2, userId);
+                    
+
+                    ResultSet rs=ps.executeQuery();
+                    return rs.next();
+                    
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
     public boolean hasSharePermission(int userId,int file_id){
         System.out.println("Share permission permision checker method");
        

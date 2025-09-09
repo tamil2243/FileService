@@ -17,10 +17,7 @@ public class SigninAction {
 
     public String execute(){
 
-        System.out.println("Entered in signin action");
-        System.out.println("email "+email);
-        System.out.println("number "+number);
-        System.out.println("password "+password);
+     
         try {
             int  userID=signinService.signinUser(email, number, password);
             response=new SigninResponseDTO(true,"succesffully signed in");  

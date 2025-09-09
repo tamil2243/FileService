@@ -21,11 +21,7 @@ public class SignupAction extends ActionSupport{
 
     @Override
     public String execute(){
-        System.out.println("entered in signup action");
-        System.out.println("name "+name);
-        System.out.println("email "+email);
-        System.out.println("number "+number);
-        System.out.println("password "+password);
+       
         try {
 
             signUpService.registerUser(name, number, email, password);

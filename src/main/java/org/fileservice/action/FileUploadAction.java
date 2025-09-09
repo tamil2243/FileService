@@ -9,6 +9,8 @@ import org.apache.struts2.ActionSupport;
 import org.apache.struts2.action.UploadedFilesAware;
 import org.apache.struts2.dispatcher.multipart.UploadedFile;
 import org.apache.struts2.interceptor.parameter.StrutsParameter;
+import org.fileservice.Exception.MaximumFileLimitExceeded;
+import org.fileservice.Exception.MaximumFileSizeExceeded;
 import org.fileservice.Exception.UnAuthorizedUserException;
 import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.dto.FileUploadResponseDTO;
@@ -16,10 +18,7 @@ import org.fileservice.service.FileService;
 
 
 public class FileUploadAction extends ActionSupport implements UploadedFilesAware{
-    private UploadedFile uploadedFile;
-    private String fileName;
-    private String contentType;
-    private String originalName;
+    private List<UploadedFile> uploadedFiles;
     private FileService fileService;
     private FileUploadResponseDTO response;
     private String description;
@@ -27,39 +26,38 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
    
     @Override
     public void withUploadedFiles(List<UploadedFile> uploadedFiles) {
-        System.out.println("UploadedFilesAware interface executed");
-        if (uploadedFiles != null && !uploadedFiles.isEmpty()) {
-            this.uploadedFile = uploadedFiles.get(0);
-            this.fileName = uploadedFile.getName();
-            this.contentType = uploadedFile.getContentType();
-            this.originalName = uploadedFile.getOriginalName();
-        }
+        this.uploadedFiles=uploadedFiles;
+       
     }
 
     @Override
     public String execute() throws Exception {
-        if (uploadedFile == null) {
+        if (uploadedFiles == null || uploadedFiles.isEmpty()) {
             System.out.println("No file uploaded!");
             response=new FileUploadResponseDTO(false,"File Not Found");
             return "error";
         }
 
-        // Print details
-        System.out.println("Original Name: " + originalName);
-        System.out.println("Server Temp Name: " + fileName);
-        System.out.println("Content Type: " + contentType);
-        System.out.println("Size: " + uploadedFile.length());
+     
        
         System.out.println("description :"+description);
 
        
        try {
-            File file = (File) uploadedFile.getContent();
-            fileService.uploadFile(file, originalName, contentType,description);
+
+            for(UploadedFile uploadedFile:uploadedFiles){
+
+                System.out.println("name"+uploadedFile.getOriginalName());
+
+                File file = (File) uploadedFile.getContent();
+                fileService.uploadFile(file, uploadedFile.getOriginalName(), uploadedFile.getContentType(),description);
+                
+                
+            }
             response=new FileUploadResponseDTO(true,"file successfully uploaded");
             return "success";
        } 
-       catch (UnAuthorizedUserException | UpdateFailedException | FileNotFoundException e) {
+       catch (UnAuthorizedUserException | UpdateFailedException | FileNotFoundException |MaximumFileLimitExceeded | MaximumFileSizeExceeded e) {
             response=new FileUploadResponseDTO(false,e.getMessage());
             return "error";
        }
@@ -72,17 +70,10 @@ public class FileUploadAction extends ActionSupport implements UploadedFilesAwar
             e.printStackTrace();
             return "error";
        }
-
+        
         
     }
     
-
-
-   
-    public String getOriginalName() { return originalName; }
-    public String getContentType() { return contentType; }
-    public String getFileName() { return fileName; }
-
 
     public FileUploadResponseDTO getResponse(){
 

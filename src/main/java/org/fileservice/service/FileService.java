@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.fileservice.Exception.FileNotFoundException;
+import org.fileservice.Exception.MaximumFileLimitExceeded;
+import org.fileservice.Exception.MaximumFileSizeExceeded;
 import org.fileservice.Exception.UnAuthorizedUserException;
 import org.fileservice.Exception.UpdateFailedException;
 import org.fileservice.Exception.UserNotFountException;
@@ -59,21 +61,36 @@ public class FileService {
 
         
     }
-    public void uploadFile(File file,String fileName,String contentType, String description)throws UpdateFailedException, Exception{
+    public void uploadFile(File file,String fileName,String contentType, String description)throws UpdateFailedException,UnAuthorizedUserException, MaximumFileLimitExceeded,MaximumFileSizeExceeded,Exception{
         int userId=cookieService.getUserId();
         System.out.println("entered in file service");
-        File targetFile = new File(UPLOAD_DIR + fileName);
+        File targetFile = new File(UPLOAD_DIR + userId+"_"+fileName);
         long sizeInBytes = file.length();
         double sizeInMB = (double) sizeInBytes / 1024;
         // Copy uploaded file to target location
-        Files.copy(file.toPath(), targetFile.toPath());
-
-        String path= targetFile.getAbsolutePath();
-        fileRepository.uploadFile(fileName, contentType, sizeInMB, path,userId,description);
+       
+        
         
      
         
-        
+        try {
+            Files.copy(file.toPath(), targetFile.toPath());
+            String path= targetFile.getAbsolutePath();
+            fileRepository.uploadFile(fileName, contentType, sizeInMB, path,userId,description);
+        }catch(UpdateFailedException | MaximumFileLimitExceeded |MaximumFileSizeExceeded e){
+           if (targetFile.exists()) {
+                targetFile.delete();
+            
+            }
+            throw e; 
+        }
+        catch (Exception e) {
+           if (targetFile.exists()) {
+                targetFile.delete();
+            
+            }
+            throw e;
+        }
   
     }
 
@@ -110,9 +127,41 @@ public class FileService {
         // return dto;
      
     }
+    public DBFileDownloadResponseDTO viewFile(int fileId){
+
+        int userId=cookieService.getUserId();
+
+        if(!fileRepository.hasViewPermission(userId, fileId)){
+            throw new UnAuthorizedUserException("you haven't access to view file");
+        }
+
+        Optional<FileMeta> optional=fileRepository.getFileMetaDetails(fileId);
+        if(optional.isEmpty()){
+            throw new FileNotFoundException("File not found for this fileId :"+fileId);
+        }
+        FileMeta fileMeta=optional.get();
+
+         File file = new File(fileMeta.getFilePath());  
+
+            
+
+            try {
+                InputStream inputStream = new FileInputStream(file);
+
+                DBFileDownloadResponseDTO dto = new DBFileDownloadResponseDTO();
+                dto.setFileInputStream(inputStream);
+                dto.setFileName(fileMeta.getFileName());
+                dto.setContentType(fileMeta.getFileType()); 
+                return dto;
+            } catch (java.io.FileNotFoundException e) {
+                throw new FileNotFoundException("Stored file is missing at path: " +fileMeta.getFilePath());
+            }
+        // return dto;
+     
+    }
     
 
-    public void setPermission(int fileId,String email, boolean download, boolean delete){
+    public void setPermission(int fileId,String email, boolean download, boolean delete)throws UnAuthorizedUserException,UserNotFountException,UpdateFailedException, Exception{
         
         int userId=cookieService.getUserId();
         if(!fileRepository.hasSharePermission(userId, fileId)){

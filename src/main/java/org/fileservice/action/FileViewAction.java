@@ -1,52 +1,71 @@
 package org.fileservice.action;
 
-import java.util.List;
+import java.io.InputStream;
 
 import org.apache.struts2.ActionSupport;
+import org.fileservice.Exception.FileNotFoundException;
 import org.fileservice.Exception.UnAuthorizedUserException;
+import org.fileservice.dto.DBFileDownloadResponseDTO;
 import org.fileservice.dto.FileViewResponseDTO;
-import org.fileservice.model.FileMeta;
 import org.fileservice.service.FileService;
 
-
-
 public class FileViewAction extends ActionSupport{
-
-
-    private FileViewResponseDTO response;
+    private InputStream fileInputStream; 
+    private String fileName;             
+    private String contentType;            
+    private int fileId;                   
     private FileService fileService;
+    private FileViewResponseDTO response;
 
 
 
     @Override
-    public String execute(){
-        System.out.println("Entered in FileViewAction");
+    public String execute() {
+        System.out.println("Entered in Download");
+        System.out.println("file id:"+fileId);
         
 
         try {
-            List<FileMeta> listOfFiles=fileService.getAllFiles();
-            response=new FileViewResponseDTO(true,"successfully file details fetched");
-            response.setListOfFiles(listOfFiles);
+            
+            
+            DBFileDownloadResponseDTO dpResponse=fileService.viewFile(fileId);
+            fileInputStream=dpResponse.getFileInputStream();
+            fileName=dpResponse.getFileName();
+            contentType=dpResponse.getContentType();
+
+            response=new FileViewResponseDTO(true,"file retrived");
             return "success";
 
-        } 
-        catch (UnAuthorizedUserException e) {
+
+
+
+        } catch (UnAuthorizedUserException  | FileNotFoundException e) {
+
             response=new FileViewResponseDTO(false,e.getMessage());
             return "error";
         }catch (Exception e) {
-            response=new FileViewResponseDTO(false,"SomeThing went wrong");
+            
+            response=new FileViewResponseDTO(false,"Something went wrong");
             return "error";
         }
 
-
+        
         
     }
 
+    // --- Getters for Struts stream result ---
+    public InputStream getFileInputStream() { return fileInputStream; }
+    public String getFileName() { return fileName; }
+    public String getContentType() { return contentType; }
+
     public FileViewResponseDTO getResponse(){
-        return this.response;
+        return response;
     }
+
+  
+    public void setFileId(int fileId) { this.fileId = fileId; }
+
     public void setFileService(FileService fileService){
         this.fileService=fileService;
     }
-    
 }
